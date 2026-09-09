@@ -215,8 +215,9 @@ export function getCommonYtDlpArgs(): string[] {
     extraArgs.push("--proxy", proxyUrl);
   }
 
-  // 3. Extractor arguments (only apply if explicitly set in environment)
-  const extractorArgs = process.env.YTDLP_EXTRACTOR_ARGS;
+  // 3. Extractor arguments with multi-client fallback to bypass bot detection on datacenter IPs
+  const defaultExtractorArgs = "youtube:player_client=default,tv_embedded,web_embedded";
+  const extractorArgs = process.env.YTDLP_EXTRACTOR_ARGS || defaultExtractorArgs;
   if (extractorArgs) {
     extraArgs.push("--extractor-args", extractorArgs);
   }
