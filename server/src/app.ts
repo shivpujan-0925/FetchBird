@@ -67,6 +67,36 @@ app.get("/api/raw-formats", async (req, res) => {
   }
 });
 
+app.get("/api/cookies-debug", (_req, res) => {
+  const secretPath = "/etc/secrets/cookies.txt";
+  const tempPath = path.resolve(process.env.TEMP_DIR || "./tmp", "cookies_runtime.txt");
+
+  const inspect = (p: string) => {
+    if (!fs.existsSync(p)) return { exists: false };
+    const stat = fs.statSync(p);
+    const text = fs.readFileSync(p, "utf-8");
+    const lines = text.split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#"));
+    const cookieNames = lines.map((l) => {
+      const parts = l.split(/\t+/);
+      return parts[5] || parts[0]?.slice(0, 20);
+    });
+    return {
+      exists: true,
+      size: stat.size,
+      linesCount: lines.length,
+      firstLinePreview: text.slice(0, 60),
+      cookieNames: [...new Set(cookieNames)].slice(0, 20),
+    };
+  };
+
+  res.json({
+    secretFile: inspect(secretPath),
+    runtimeFile: inspect(tempPath),
+    envYoutubeCookiesPresent: Boolean(process.env.YOUTUBE_COOKIES),
+    envYoutubeCookiesLength: process.env.YOUTUBE_COOKIES?.length || 0,
+  });
+});
+
 // Production Static Client Serving (SPA)
 const clientDistPath =
   process.env.CLIENT_DIST_PATH ||
