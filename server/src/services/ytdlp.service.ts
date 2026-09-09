@@ -171,9 +171,8 @@ export function getCommonYtDlpArgs(): string[] {
     extraArgs.push("--proxy", proxyUrl);
   }
 
-  // 3. Extractor arguments (fallback to player clients that minimize bot detection challenges)
-  const extractorArgs =
-    process.env.YTDLP_EXTRACTOR_ARGS || "youtube:player_client=ios,web,mweb";
+  // 3. Extractor arguments (only apply if explicitly set in environment)
+  const extractorArgs = process.env.YTDLP_EXTRACTOR_ARGS;
   if (extractorArgs) {
     extraArgs.push("--extractor-args", extractorArgs);
   }
@@ -213,6 +212,10 @@ export function formatUserFacingError(rawMsg: string): string {
       "(such as 'Get cookies.txt LOCALLY') and add them in Render as a Secret File (/etc/secrets/cookies.txt) " +
       "or as the YOUTUBE_COOKIES environment variable."
     );
+  }
+
+  if (rawMsg.includes("Requested format is not available")) {
+    return "The requested video stream or format is not available from YouTube. Please try another quality option or Audio Only (MP3).";
   }
 
   const match = rawMsg.match(/ERROR:\s*(?:\[[^\]]+\]\s*)?(?:[^\s:]+:\s*)?([^\r\n]+)/);
@@ -268,6 +271,7 @@ export async function fetchInfo(url: string): Promise<VideoMetadata> {
     "--dump-json",
     "--no-playlist",
     "--no-warnings",
+    "--ignore-no-formats-error",
     "--js-runtimes",
     "node",
     ...commonArgs,
@@ -297,19 +301,67 @@ export async function fetchInfo(url: string): Promise<VideoMetadata> {
   const rawFormats = raw.formats || [];
   const optionsMap = new Map<string, VideoFormatOption>();
 
-  // Helper to extract height
-  const standardHeights = [1080, 720, 480, 360];
+  // Resolution tier definitions (handles both standard 16:9 and 21:9 / 2.35:1 widescreen formats)
+  const resolutionTiers: Array<{
+    id: string;
+    label: string;
+    maxHeight: number;
+    match: (f: any) => boolean;
+    note: string;
+  }> = [
+    {
+      id: "1080p",
+      label: "1080p",
+      maxHeight: 1080,
+      match: (f: any) =>
+        (f.height && f.height > 720 && f.height <= 1080) ||
+        f.format_note?.includes("1080") ||
+        f.resolution?.includes("1080") ||
+        (f.width && f.width >= 1920 && f.height && f.height >= 720),
+      note: "Full HD (Muxed)",
+    },
+    {
+      id: "720p",
+      label: "720p",
+      maxHeight: 720,
+      match: (f: any) =>
+        (f.height && f.height > 480 && f.height <= 720) ||
+        f.format_note?.includes("720") ||
+        f.resolution?.includes("720") ||
+        (f.width && f.width >= 1280 && f.height && f.height >= 480),
+      note: "HD (Muxed)",
+    },
+    {
+      id: "480p",
+      label: "480p",
+      maxHeight: 480,
+      match: (f: any) =>
+        (f.height && f.height > 360 && f.height <= 480) ||
+        f.format_note?.includes("480") ||
+        f.resolution?.includes("480"),
+      note: "SD (Muxed)",
+    },
+    {
+      id: "360p",
+      label: "360p",
+      maxHeight: 360,
+      match: (f: any) =>
+        (f.height && f.height <= 360 && f.height > 0) ||
+        f.format_note?.includes("360") ||
+        f.resolution?.includes("360"),
+      note: "SD (Muxed)",
+    },
+  ];
 
-  for (const h of standardHeights) {
-    // Check if any stream has this height
-    const hasHeight = rawFormats.some((f: any) => f.height === h);
-    if (hasHeight) {
-      optionsMap.set(`${h}p`, {
-        formatId: `bestvideo[height<=${h}]+bestaudio/best[height<=${h}]/best`,
-        resolution: `${h}p`,
+  for (const tier of resolutionTiers) {
+    const hasTier = rawFormats.some(tier.match);
+    if (hasTier) {
+      optionsMap.set(tier.id, {
+        formatId: `bestvideo[height<=${tier.maxHeight}]+bestaudio/best[height<=${tier.maxHeight}]/bestvideo+bestaudio/best`,
+        resolution: tier.label,
         ext: "mp4",
         hasAudio: true,
-        note: h >= 1080 ? "Full HD (Muxed)" : h === 720 ? "HD (Muxed)" : "SD (Muxed)",
+        note: tier.note,
       });
     }
   }
@@ -340,7 +392,19 @@ export async function fetchInfo(url: string): Promise<VideoMetadata> {
     }
   }
 
-  // If no standard options matched, fallback to raw formats
+  // If no standard video options matched but video exists, add Best Video fallback
+  const hasVideo = rawFormats.some((f: any) => f.vcodec && f.vcodec !== "none");
+  if (hasVideo && !optionsMap.has("1080p") && !optionsMap.has("720p") && !optionsMap.has("480p") && !optionsMap.has("360p")) {
+    optionsMap.set("best-video", {
+      formatId: "bestvideo+bestaudio/best",
+      resolution: "Best Available",
+      ext: "mp4",
+      hasAudio: true,
+      note: "Auto Best Quality",
+    });
+  }
+
+  // If no options matched at all, fallback to raw formats
   if (optionsMap.size <= 1) {
     for (const f of rawFormats.slice(-6)) {
       if (f.vcodec !== "none" || f.acodec !== "none") {

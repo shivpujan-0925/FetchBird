@@ -8,6 +8,7 @@ client/dist/
 server/dist/
 
 # Downloaded binaries & temporary video storage (CRITICAL: prevents GitHub 100MB limit rejection)
+bin/
 server/bin/
 server/tmp/
 tmp/
