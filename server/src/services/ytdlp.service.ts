@@ -216,7 +216,7 @@ export function getCommonYtDlpArgs(): string[] {
   }
 
   // 3. Extractor arguments with multi-client fallback to bypass bot detection on datacenter IPs
-  const defaultExtractorArgs = "youtube:player_client=default,tv_embedded,web_embedded";
+  const defaultExtractorArgs = "youtube:player_client=web_embedded,android,ios,mweb,default";
   const extractorArgs = process.env.YTDLP_EXTRACTOR_ARGS || defaultExtractorArgs;
   if (extractorArgs) {
     extraArgs.push("--extractor-args", extractorArgs);
@@ -322,11 +322,10 @@ export async function fetchInfo(url: string): Promise<VideoMetadata> {
   const commonArgs = getCommonYtDlpArgs();
 
   const args = [
-    url,
     "--dump-json",
     "--no-playlist",
     "--no-warnings",
-    "--ignore-no-formats-error",
+    url,
     ...commonArgs,
   ];
 
