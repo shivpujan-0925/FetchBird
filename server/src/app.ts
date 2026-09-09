@@ -11,6 +11,9 @@ import { getServiceDiagnostics } from "./services/ytdlp.service.js";
 
 const app = express();
 
+// Trust reverse proxy headers from Render/cloud load balancers (required by express-rate-limit)
+app.set("trust proxy", 1);
+
 const clientOrigin = process.env.CLIENT_ORIGIN;
 
 app.use(

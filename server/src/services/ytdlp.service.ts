@@ -211,6 +211,9 @@ export function getCommonYtDlpArgs(): string[] {
     extraArgs.push("--extractor-args", extractorArgs);
   }
 
+  // 4. JS runtimes (Deno & Node) for signature deciphering and unlocking full video formats
+  extraArgs.push("--js-runtimes", "deno", "--js-runtimes", "node");
+
   return extraArgs;
 }
 
@@ -306,8 +309,6 @@ export async function fetchInfo(url: string): Promise<VideoMetadata> {
     "--no-playlist",
     "--no-warnings",
     "--ignore-no-formats-error",
-    "--js-runtimes",
-    "deno,node",
     ...commonArgs,
   ];
 
@@ -522,8 +523,6 @@ export async function downloadToFile(
     "--no-playlist",
     "--no-warnings",
     "--newline",
-    "--js-runtimes",
-    "deno,node",
     "--windows-filenames",
     "--file-access-retries",
     "10",
