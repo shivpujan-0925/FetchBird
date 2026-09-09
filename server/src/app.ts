@@ -10,11 +10,24 @@ import batchRouter from "./routes/batch.js";
 
 const app = express();
 
-const clientOrigin = process.env.CLIENT_ORIGIN || "http://localhost:5173";
+const clientOrigin = process.env.CLIENT_ORIGIN;
 
 app.use(
   cors({
-    origin: [clientOrigin, "http://localhost:5173", "http://127.0.0.1:5173"],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, or same-origin SPA)
+      if (!origin) return callback(null, true);
+      if (
+        origin.includes("localhost") ||
+        origin.includes("127.0.0.1") ||
+        origin.endsWith(".onrender.com") ||
+        origin.endsWith(".railway.app") ||
+        origin === clientOrigin
+      ) {
+        return callback(null, true);
+      }
+      return callback(null, true);
+    },
     credentials: true,
   })
 );
