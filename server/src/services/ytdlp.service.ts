@@ -321,21 +321,31 @@ export async function fetchInfo(url: string): Promise<VideoMetadata> {
   const yt = await getYtDlp();
   const commonArgs = getCommonYtDlpArgs();
 
-  const args = [
-    "--dump-json",
-    "--no-playlist",
-    "--no-warnings",
-    url,
-    ...commonArgs,
-  ];
+  const buildArgs = (withCookies: boolean) => {
+    const base = withCookies
+      ? commonArgs
+      : commonArgs.filter((a, i, arr) => a !== "--cookies" && arr[i - 1] !== "--cookies");
+    return ["--dump-json", "--no-playlist", "--no-warnings", url, ...base];
+  };
 
-  let stdout: string;
+  let stdout: string = "";
   try {
-    stdout = await yt.execPromise(args);
+    stdout = await yt.execPromise(buildArgs(true));
   } catch (err: any) {
     const message = err.message || "";
-    console.error("[yt-dlp] fetchInfo error for", url, message);
-    throw new Error(formatUserFacingError(message));
+    // If the primary attempt with cookies failed due to anti-bot challenge (e.g. expired cookies), retry without cookies
+    if (commonArgs.includes("--cookies") && isBotDetectionError(message)) {
+      console.warn("[yt-dlp] Cookies triggered anti-bot verification. Automatically retrying without cookies for:", url);
+      try {
+        stdout = await yt.execPromise(buildArgs(false));
+      } catch (retryErr: any) {
+        console.error("[yt-dlp] Fallback without cookies also failed for:", url, retryErr.message);
+        throw new Error(formatUserFacingError(retryErr.message || message));
+      }
+    } else {
+      console.error("[yt-dlp] fetchInfo error for", url, message);
+      throw new Error(formatUserFacingError(message));
+    }
   }
 
   const raw = JSON.parse(stdout);
@@ -630,10 +640,13 @@ export async function downloadToFile(
  * Runs raw yt-dlp -F with all configured runtime arguments (cookies, node/deno JS runtimes, proxy)
  * and returns the exact command and unfiltered stdout/stderr.
  */
-export async function runRawFormats(url: string): Promise<{ command: string; stdout: string; stderr: string }> {
+export async function runRawFormats(url: string, useCookies: boolean = true): Promise<{ command: string; stdout: string; stderr: string }> {
   const yt = await getYtDlp();
   const commonArgs = getCommonYtDlpArgs();
-  const args = ["-F", url, ...commonArgs];
+  const base = useCookies
+    ? commonArgs
+    : commonArgs.filter((a, i, arr) => a !== "--cookies" && arr[i - 1] !== "--cookies");
+  const args = ["-F", url, ...base];
   const binary = yt.getBinaryPath ? yt.getBinaryPath() : "yt-dlp";
   const fullCommand = `${binary} ${args.map((a) => (a.includes(" ") ? `"${a}"` : a)).join(" ")}`;
 

@@ -60,7 +60,8 @@ app.get("/api/status", (_req, res) => {
 app.get("/api/raw-formats", async (req, res) => {
   try {
     const url = (req.query.url as string) || "https://www.youtube.com/watch?v=E4ZJxhyAaH8";
-    const result = await runRawFormats(url);
+    const useCookies = req.query.cookies !== "0" && req.query.cookies !== "false";
+    const result = await runRawFormats(url, useCookies);
     res.type("text/plain").send(`Command: ${result.command}\n\nSTDOUT:\n${result.stdout}\n\nSTDERR:\n${result.stderr}`);
   } catch (err: any) {
     res.status(500).type("text/plain").send(`Error: ${err.message}`);
