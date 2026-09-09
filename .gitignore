@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Production build outputs
+client/dist/
+server/dist/
+
+# Downloaded binaries & temporary video storage (CRITICAL: prevents GitHub 100MB limit rejection)
+server/bin/
+server/tmp/
+tmp/
+*.part
+*.temp.*
+*.mp4
+*.mp3
+*.webm
+*.mkv
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+server/.env
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+scratch/

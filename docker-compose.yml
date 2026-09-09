@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fetchbird-app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - MONGO_URI=mongodb://mongo:27017/fetchbird
+      - TEMP_DIR=/app/server/tmp
+      - CLIENT_DIST_PATH=/app/client/dist
+      - FILE_TTL_MINUTES=60
+      - MAX_CONCURRENT_DOWNLOADS=2
+      - MAX_VIDEO_DURATION_SECONDS=21600
+    volumes:
+      - fetchbird_tmp:/app/server/tmp
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:7
+    container_name: fetchbird-mongo
+    restart: unless-stopped
+    volumes:
+      - fetchbird_mongo_data:/data/db
+
+volumes:
+  fetchbird_tmp:
+  fetchbird_mongo_data:
