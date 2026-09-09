@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FetchBird — System Architecture Specification</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: #111827;
+      --border: #1f2937;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --primary: #3b82f6;
+      --accent: #60a5fa;
+      --code-bg: #0d1117;
+    }
+
+    @media print {
+      body { background: #ffffff !important; color: #111827 !important; }
+      .no-print { display: none !important; }
+      .card { border: 1px solid #e5e7eb !important; background: #ffffff !important; box-shadow: none !important; }
+      pre, code { background: #f3f4f6 !important; color: #111827 !important; }
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 2rem;
+      margin-bottom: 2.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: #ffffff;
+      letter-spacing: -0.02em;
+    }
+
+    h1 { font-size: 2.4rem; font-weight: 800; line-height: 1.2; }
+    h2 { font-size: 1.6rem; margin: 2.5rem 0 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; color: var(--accent); }
+    h3 { font-size: 1.2rem; margin: 1.5rem 0 0.75rem; color: #e5e7eb; }
+
+    p, li { color: #d1d5db; font-size: 0.95rem; margin-bottom: 0.85rem; }
+    ul, ol { padding-left: 1.5rem; margin-bottom: 1rem; }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.65rem;
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      border-radius: 9999px;
+      background: rgba(59, 130, 246, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      margin-right: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    }
+
+    .mermaid {
+      background: #0d1322;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      overflow-x: auto;
+      text-align: center;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+      font-size: 0.875rem;
+      background: var(--card-bg);
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    th, td {
+      padding: 0.85rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background: #1f2937;
+      color: #ffffff;
+      font-weight: 600;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: #38bdf8;
+      margin: 1rem 0;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 0.15rem 0.35rem;
+      border-radius: 4px;
+      font-size: 0.85em;
+      color: #93c5fd;
+    }
+
+    .print-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.65rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .print-btn:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div>
+        <h1>FetchBird</h1>
+        <p style="color: var(--accent); font-weight: 500; margin-top: 0.35rem;">
+          High-Speed YouTube Media Downloader & FFmpeg Muxing Pipeline
+        </p>
+        <div style="margin-top: 0.75rem;">
+          <span class="badge">Architecture v1.2</span>
+          <span class="badge">MERN Stack</span>
+          <span class="badge">yt-dlp Engine</span>
+          <span class="badge">FFmpeg Static</span>
+          <span class="badge">Socket.IO Realtime</span>
+        </div>
+      </div>
+      <div class="no-print">
+        <button class="print-btn" onclick="window.print()">
+          <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/>
+            <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2H5zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4V3zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2H5zm7 2v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1z"/>
+          </svg>
+          Save / Print as PDF
+        </button>
+      </div>
+    </header>
+
+    <section>
+      <h2>1. System Architecture Overview</h2>
+      <p>
+        FetchBird is a local-first YouTube media extraction utility. It avoids cloud retention by streaming media directly to local disk buffers, combining video and audio with FFmpeg, and streaming final packages directly to the browser.
+      </p>
+
+      <div class="mermaid">
+graph TD
+    Client["Client (React 18 + Vite + TypeScript)"] --> Ingress["API & Gateway (Express.js)"]
+    Client <--> Sockets["Realtime Hub (Socket.IO)"]
+    Ingress --> Queue["Concurrency Controller (p-queue)"]
+    Ingress --> Mongo[("MongoDB / Atlas Database")]
+    Queue --> Engine["yt-dlp & FFmpeg Engine"]
+    Engine --> Disk["Disk Buffer (/tmp)"]
+    Engine --> Sockets
+    Disk --> Ingress
+      </div>
+    </section>
+
+    <section>
+      <h2>2. Layered Architecture</h2>
+
+      <div class="card">
+        <h3>2.1 Presentation Layer</h3>
+        <ul>
+          <li><strong>Framework:</strong> React 18, Vite, TypeScript.</li>
+          <li><strong>Styling:</strong> Tailwind CSS v3, Radix UI primitives, Lucide icons.</li>
+          <li><strong>Typography:</strong> Plus Jakarta Sans (Headings), Inter (Body), JetBrains Mono (Specs).</li>
+          <li><strong>State & Sockets:</strong> <code>TanStack Query</code> for declarative REST fetching; custom <code>useSocket</code> and <code>useMultiSocket</code> hooks for real-time progress.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>2.2 Ingress & Realtime Communication</h3>
+        <ul>
+          <li><strong>HTTP Server:</strong> Express 4 with dynamic CORS reflection.</li>
+          <li><strong>WebSockets:</strong> Socket.IO v4 with per-job isolated broadcast rooms (<code>io.to(jobId).emit(...)</code>).</li>
+          <li><strong>Production SPA:</strong> Single-container deployment where Express serves the compiled React frontend from <code>client/dist</code>.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>2.3 Queue & Extraction Pipeline</h3>
+        <ul>
+          <li><strong>Concurrency Queue:</strong> In-memory <code>p-queue</code> worker pool limiting active downloads to prevent CPU and memory exhaustion.</li>
+          <li><strong>Extraction CLI:</strong> <code>yt-dlp</code> spawned as child process with Node cipher runtime (<code>--js-runtimes node</code>).</li>
+          <li><strong>Muxing:</strong> FFmpeg multiplexes high-bitrate video and audio streams directly into standard <code>.mp4</code> or converts to 320kbps <code>.mp3</code>.</li>
+          <li><strong>Storage Lifecycle:</strong> Automated cleanup scheduler running every 15 minutes purges disk buffer files older than <code>FILE_TTL_MINUTES</code>.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>3. End-to-End Execution Flow</h2>
+
+      <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor User as User Browser
+    participant API as Express API
+    participant Queue as p-queue Worker
+    participant YT as yt-dlp & FFmpeg
+    participant Disk as Local Disk (/tmp)
+    participant Socket as Socket.IO Hub
+
+    User->>API: POST /api/info (url)
+    API->>YT: exec --dump-json
+    YT-->>API: Stream Formats
+    API-->>User: Curated Format Options (1080p, 720p, MP3)
+
+    User->>API: POST /api/download (url, formatId)
+    API->>Queue: Enqueue Task
+    API-->>User: { jobId: "..." }
+    User->>Socket: subscribe(jobId)
+
+    Queue->>YT: Spawn download & mux
+    loop Realtime Progress
+        YT-->>Socket: Stream speed & percentage
+        Socket-->>User: Update Progress Bar & ETA
+    end
+
+    YT->>Disk: Write final .mp4 / .mp3
+    Socket-->>User: Status -> ready (100%)
+
+    User->>API: GET /api/file/:jobId
+    API->>Disk: Stream binary file
+    Disk-->>User: Download File Dialog
+      </div>
+    </section>
+
+    <section>
+      <h2>4. API Specifications</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Method</th>
+            <th>Endpoint</th>
+            <th>Description</th>
+            <th>Response</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>POST</code></td>
+            <td><code>/api/info</code></td>
+            <td>Inspect single video metadata & formats</td>
+            <td><code>{ id, title, thumbnail, duration, formats }</code></td>
+          </tr>
+          <tr>
+            <td><code>POST</code></td>
+            <td><code>/api/download</code></td>
+            <td>Enqueue single video download job</td>
+            <td><code>{ "jobId": string }</code></td>
+          </tr>
+          <tr>
+            <td><code>POST</code></td>
+            <td><code>/api/batch-info</code></td>
+            <td>Concurrently inspect up to 10 YouTube URLs</td>
+            <td><code>{ "results": [...] }</code></td>
+          </tr>
+          <tr>
+            <td><code>POST</code></td>
+            <td><code>/api/batch-download</code></td>
+            <td>Enqueue multi-video batch download</td>
+            <td><code>{ "jobs": [...] }</code></td>
+          </tr>
+          <tr>
+            <td><code>GET</code></td>
+            <td><code>/api/status/:jobId</code></td>
+            <td>Polling status fallback for job</td>
+            <td><code>{ jobId, status, progress, title }</code></td>
+          </tr>
+          <tr>
+            <td><code>GET</code></td>
+            <td><code>/api/file/:jobId</code></td>
+            <td>Stream final media file with RFC 6266 headers</td>
+            <td>Binary Stream (<code>video/mp4</code> or <code>audio/mpeg</code>)</td>
+          </tr>
+          <tr>
+            <td><code>GET</code></td>
+            <td><code>/health</code></td>
+            <td>Server liveness probe</td>
+            <td><code>{ "status": "ok" }</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>5. Database Schema (MongoDB)</h2>
+      <pre><code>interface IJob {
+  _id: ObjectId;
+  url: string;                  // YouTube URL
+  title?: string;              // Sanitized media title
+  thumbnail?: string;          // Poster image URL
+  formatId: string;            // yt-dlp format selector
+  status: "pending" | "downloading" | "merging" | "ready" | "failed";
+  progress: number;            // 0 to 100
+  filePath?: string;           // Physical storage path
+  errorMessage?: string;       // Failure explanation if any
+  createdAt: Date;             // Auto-timestamp (TTL indexed)
+}</code></pre>
+    </section>
+
+    <section>
+      <h2>6. Production Deployment Topology</h2>
+
+      <div class="mermaid">
+graph LR
+    Browser["User Browser"] -->|HTTPS / WSS| Docker["FetchBird Container (Port 5000)"]
+    subgraph Container ["FetchBird Docker Container"]
+        Express["Express SPA & API"]
+        NodeEngine["Node.js + Python + FFmpeg"]
+        DiskStore["Persistent Volume (/tmp)"]
+    end
+    Docker --> Express
+    Express --> NodeEngine
+    NodeEngine --> DiskStore
+    Express --> CloudDB[("MongoDB Atlas Cloud")]
+      </div>
+    </section>
+
+    <footer style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border); text-align: center; color: var(--text-muted); font-size: 0.8rem;">
+      FetchBird &copy; 2026 — Complete System Architecture Specification. All rights reserved.
+    </footer>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#0d1322',
+        primaryColor: '#1d4ed8',
+        primaryTextColor: '#ffffff',
+        primaryBorderColor: '#3b82f6',
+        lineColor: '#60a5fa',
+        secondaryColor: '#1e293b',
+        tertiaryColor: '#0f172a'
+      }
+    });
+  </script>
+</body>
+</html>
