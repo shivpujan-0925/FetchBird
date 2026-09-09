@@ -307,7 +307,7 @@ export async function fetchInfo(url: string): Promise<VideoMetadata> {
     "--no-warnings",
     "--ignore-no-formats-error",
     "--js-runtimes",
-    "node",
+    "deno,node",
     ...commonArgs,
   ];
 
@@ -523,7 +523,7 @@ export async function downloadToFile(
     "--no-warnings",
     "--newline",
     "--js-runtimes",
-    "node",
+    "deno,node",
     "--windows-filenames",
     "--file-access-retries",
     "10",
