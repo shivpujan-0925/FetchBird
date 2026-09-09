@@ -4,7 +4,7 @@ import Job from "../models/Job.js";
 import { validateUrlMiddleware } from "../middleware/validateUrl.js";
 import { downloadRateLimiter } from "../middleware/rateLimit.js";
 import { enqueueDownload } from "../services/queue.service.js";
-import { downloadToFile } from "../services/ytdlp.service.js";
+import { downloadToFile, formatUserFacingError } from "../services/ytdlp.service.js";
 import { emitJobProgress } from "../sockets/progress.socket.js";
 
 const router = Router();
@@ -106,7 +106,7 @@ router.post("/download", downloadRateLimiter, validateUrlMiddleware, async (req:
         console.log(`[Job ${jobId}] Finished. File saved at ${outPath}`);
       } catch (err: any) {
         console.error(`[Job ${jobId}] Download failed:`, err);
-        const errorMessage = err.message || "Download failed";
+        const errorMessage = formatUserFacingError(err.message || "Download failed");
 
         await Job.findByIdAndUpdate(jobId, {
           status: "failed",

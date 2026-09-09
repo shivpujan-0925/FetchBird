@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Download, Film, Music, Trash2, ArrowLeft, Video, CheckCircle } from "lucide-react";
+import { Download, Film, Music, Trash2, ArrowLeft, Video, CheckCircle, ShieldAlert, AlertTriangle } from "lucide-react";
 import { BatchInfoItem, BatchDownloadItem } from "@/lib/api";
 import { formatDuration } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ export function BatchDownloadManager({
   onCancel,
   isStarting,
 }: BatchDownloadManagerProps) {
+  const [showCookieGuide, setShowCookieGuide] = useState(false);
   // Map of URL -> selected formatId
   const [selectedFormats, setSelectedFormats] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
@@ -151,28 +152,98 @@ export function BatchDownloadManager({
         </div>
       </div>
 
+      {/* Bot Challenge / Render Cookie Fix Notification */}
+      {activeItems.some(
+        (i) =>
+          !i.success &&
+          (i.isBotChallenge ||
+            i.error?.toLowerCase().includes("anti-bot") ||
+            i.error?.toLowerCase().includes("bot") ||
+            i.error?.toLowerCase().includes("cookie"))
+      ) && (
+        <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200 text-xs space-y-2.5">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2 font-medium">
+              <ShieldAlert className="h-4 w-4 text-amber-500 shrink-0" />
+              <span>YouTube Anti-Bot Challenge (Cloud Server IP Block)</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowCookieGuide(!showCookieGuide)}
+              className="text-[11px] underline underline-offset-2 hover:opacity-80 shrink-0 font-mono text-amber-600 dark:text-amber-400"
+            >
+              {showCookieGuide ? "Hide Guide" : "How to Fix on Render"}
+            </button>
+          </div>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            YouTube challenges automated requests originating from cloud hosting providers (Render, AWS). To download videos seamlessly, YouTube cookies must be provided.
+          </p>
+          {showCookieGuide && (
+            <div className="pt-2.5 border-t border-amber-500/20 text-[11px] space-y-2 font-sans">
+              <p className="font-semibold text-foreground">3 Quick Steps to Fix on Render:</p>
+              <ol className="list-decimal list-inside space-y-1.5 text-muted-foreground">
+                <li>
+                  Install a cookie exporter browser extension (such as <strong>&quot;Get cookies.txt LOCALLY&quot;</strong>).
+                </li>
+                <li>
+                  Open YouTube in your browser while signed in, click the extension, and export <code>cookies.txt</code>.
+                </li>
+                <li>
+                  In your <strong>Render Dashboard</strong> for FetchBird:
+                  <div className="pl-4 mt-1 space-y-1">
+                    <div>
+                      • <strong>Secret Files (Recommended):</strong> Go to <em>Environment</em> &rarr; <em>Secret Files</em> &rarr; Add <code>/etc/secrets/cookies.txt</code> and paste the contents.
+                    </div>
+                    <div>
+                      • <strong>Environment Variable:</strong> Add an env var named <code>YOUTUBE_COOKIES</code> with your cookie text.
+                    </div>
+                  </div>
+                </li>
+              </ol>
+              <p className="text-[10px] text-muted-foreground pt-1">
+                FetchBird will automatically read the cookies on startup and bypass YouTube&apos;s bot challenge!
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Inspected items list */}
       <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
         {activeItems.map((item, index) => {
           if (!item.success || !item.info) {
+            const isBot =
+              item.isBotChallenge ||
+              item.error?.toLowerCase().includes("anti-bot") ||
+              item.error?.toLowerCase().includes("bot") ||
+              item.error?.toLowerCase().includes("cookie");
+
             return (
               <div
                 key={item.url + index}
-                className="p-3 rounded-lg border border-destructive/20 bg-destructive/5 flex items-center justify-between gap-3 text-xs"
+                className="p-3.5 rounded-xl border border-destructive/20 bg-destructive/5 flex items-start justify-between gap-3 text-xs"
               >
-                <div className="truncate">
+                <div className="space-y-1.5 flex-1 min-w-0">
                   <span className="font-mono text-[11px] text-muted-foreground block truncate">
                     {item.url}
                   </span>
-                  <span className="text-destructive font-medium">
-                    {item.error || "Failed to fetch info"}
-                  </span>
+                  <div className="space-y-1">
+                    {isBot && (
+                      <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 mr-1.5">
+                        YouTube Bot Challenge
+                      </span>
+                    )}
+                    <span className="text-destructive font-medium leading-relaxed block break-words">
+                      {item.error || "Failed to fetch info"}
+                    </span>
+                  </div>
                 </div>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => handleRemove(item.url)}
-                  className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+                  className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0 mt-0.5"
+                  title="Remove from batch"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>

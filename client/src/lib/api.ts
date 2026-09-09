@@ -69,6 +69,7 @@ export interface BatchInfoItem {
   success: boolean;
   info?: VideoInfoResponse;
   error?: string;
+  isBotChallenge?: boolean;
 }
 
 export interface BatchInfoResponse {
@@ -128,3 +129,35 @@ export function getFileDownloadUrl(jobId: string): string {
   const baseUrl = import.meta.env.VITE_API_URL || "";
   return `${baseUrl}/api/file/${jobId}`;
 }
+
+export interface ServiceDiagnostics {
+  cookiesConfigured: boolean;
+  cookiesSource: "env-content" | "env-path" | "render-secret" | "local-file" | "none";
+  proxyConfigured: boolean;
+  binaryPath: string;
+}
+
+export interface ServiceStatusResponse {
+  status: string;
+  service: string;
+  diagnostics: ServiceDiagnostics;
+}
+
+export async function fetchServiceStatus(): Promise<ServiceStatusResponse> {
+  try {
+    const { data } = await api.get<ServiceStatusResponse>("/api/status");
+    return data;
+  } catch {
+    return {
+      status: "unknown",
+      service: "FetchBird Server",
+      diagnostics: {
+        cookiesConfigured: false,
+        cookiesSource: "none",
+        proxyConfigured: false,
+        binaryPath: "",
+      },
+    };
+  }
+}
+

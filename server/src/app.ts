@@ -7,6 +7,7 @@ import infoRouter from "./routes/info.js";
 import downloadRouter from "./routes/download.js";
 import fileRouter from "./routes/file.js";
 import batchRouter from "./routes/batch.js";
+import { getServiceDiagnostics } from "./services/ytdlp.service.js";
 
 const app = express();
 
@@ -40,9 +41,17 @@ app.use("/api", downloadRouter);
 app.use("/api", fileRouter);
 app.use("/api", batchRouter);
 
-// Health check
+// Health check & Diagnostics
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", service: "FetchBird Server" });
+});
+
+app.get("/api/status", (_req, res) => {
+  res.json({
+    status: "ok",
+    service: "FetchBird Server",
+    diagnostics: getServiceDiagnostics(),
+  });
 });
 
 // Production Static Client Serving (SPA)

@@ -3,7 +3,12 @@ import path from "path";
 import Job from "../models/Job.js";
 import { isValidYouTubeUrl } from "../middleware/validateUrl.js";
 import { infoRateLimiter, downloadRateLimiter } from "../middleware/rateLimit.js";
-import { fetchInfo, downloadToFile } from "../services/ytdlp.service.js";
+import {
+  fetchInfo,
+  downloadToFile,
+  formatUserFacingError,
+  isBotDetectionError,
+} from "../services/ytdlp.service.js";
 import { enqueueDownload } from "../services/queue.service.js";
 import { emitJobProgress } from "../sockets/progress.socket.js";
 
@@ -47,12 +52,12 @@ router.post("/batch-info", infoRateLimiter, async (req: Request, res: Response) 
           };
         } catch (err: any) {
           const rawMsg = err.message || "";
-          const match = rawMsg.match(/ERROR:\s*(?:\[[^\]]+\]\s*)?(?:[^\s:]+:\s*)?([^\r\n]+)/);
-          const cleanMsg = match ? match[1].trim() : rawMsg.replace(/^Error code: Error: Command failed:[^\r\n]*/, "").trim() || "Failed to fetch metadata";
+          const cleanMsg = formatUserFacingError(rawMsg);
           return {
             url: trimmed,
             success: false,
             error: cleanMsg,
+            isBotChallenge: isBotDetectionError(rawMsg),
           };
         }
       })
@@ -173,15 +178,17 @@ router.post("/batch-download", downloadRateLimiter, async (req: Request, res: Re
           });
         } catch (err: any) {
           console.error(`[Job ${jobId}] Batch item failed:`, err);
+          const rawMsg = err.message || "Download failed";
+          const errorMessage = formatUserFacingError(rawMsg);
           await Job.findByIdAndUpdate(jobId, {
             status: "failed",
-            errorMessage: err.message || "Download failed",
+            errorMessage,
           });
           emitJobProgress(jobId, {
             jobId,
             status: "failed",
             progress: 0,
-            error: err.message,
+            error: errorMessage,
           });
         }
       });

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Sparkles, AlertCircle, ArrowLeft, Link2, ListChecks } from "lucide-react";
+import { Sparkles, AlertCircle, ArrowLeft, Link2, ListChecks, ShieldAlert } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { UrlInput } from "@/components/UrlInput";
@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 
 export function Home() {
   const [activeTab, setActiveTab] = useState<"single" | "batch">("single");
+  const [showSingleCookieGuide, setShowSingleCookieGuide] = useState(false);
 
   // Single video flow state
   const [videoInfo, setVideoInfo] = useState<VideoInfoResponse | null>(null);
@@ -263,11 +264,46 @@ export function Home() {
                     <UrlInput onFetch={handleFetchSingle} isLoading={isFetching} />
 
                     {fetchError && (
-                      <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-start gap-2.5">
-                        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                        <span className="font-sans leading-normal font-medium">
-                          {fetchError.message || "Failed to fetch video information. Please check the URL."}
-                        </span>
+                      <div className="space-y-3">
+                        <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-start gap-2.5">
+                          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                          <span className="font-sans leading-normal font-medium break-words">
+                            {fetchError.message || "Failed to fetch video information. Please check the URL."}
+                          </span>
+                        </div>
+
+                        {(fetchError.message?.toLowerCase().includes("anti-bot") ||
+                          fetchError.message?.toLowerCase().includes("bot") ||
+                          fetchError.message?.toLowerCase().includes("cookie")) && (
+                          <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200 text-xs space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 font-medium">
+                                <ShieldAlert className="h-4 w-4 text-amber-500 shrink-0" />
+                                <span>Running on Render? YouTube Requires Cookies</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setShowSingleCookieGuide(!showSingleCookieGuide)}
+                                className="text-[11px] underline underline-offset-2 hover:opacity-80 shrink-0 font-mono text-amber-600 dark:text-amber-400"
+                              >
+                                {showSingleCookieGuide ? "Hide Steps" : "How to Fix"}
+                              </button>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground leading-relaxed">
+                              YouTube blocks unauthenticated requests from cloud server IP addresses (Render/AWS). You can fix this in under 1 minute by adding your browser cookies.
+                            </p>
+                            {showSingleCookieGuide && (
+                              <div className="pt-2 border-t border-amber-500/20 text-[11px] space-y-1.5 font-sans">
+                                <p className="font-semibold text-foreground">Steps to configure cookies on Render:</p>
+                                <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                                  <li>Install the extension <strong>&quot;Get cookies.txt LOCALLY&quot;</strong> in your browser.</li>
+                                  <li>Visit YouTube while logged in and click Export to save <code>cookies.txt</code>.</li>
+                                  <li>In Render Dashboard &rarr; <em>Environment</em> &rarr; <em>Secret Files</em>: Add <code>/etc/secrets/cookies.txt</code> (or set <code>YOUTUBE_COOKIES</code> env var).</li>
+                                </ol>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

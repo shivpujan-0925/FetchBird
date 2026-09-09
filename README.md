@@ -229,6 +229,43 @@ FetchBird includes a production-ready multi-stage `Dockerfile` and `docker-compo
 
 ---
 
+### Resolving YouTube Bot Detection on Render ("Sign in to confirm you're not a bot")
+
+When hosting on cloud platforms like **Render**, **AWS**, or **DigitalOcean**, YouTube often blocks unauthenticated video requests originating from datacenter IP addresses with the error:
+> `Sign in to confirm you're not a bot. Use --cookies-from-browser or --cookies for the authentication.`
+
+FetchBird automatically detects and uses YouTube cookies configured in any of the following formats:
+
+#### Method 1: Render Secret Files (Recommended)
+1. Install a cookie exporter browser extension (such as **"Get cookies.txt LOCALLY"** or **"Cookie-Editor"**) in your desktop browser.
+2. Navigate to [YouTube](https://www.youtube.com) while signed in to a Google account.
+3. Click the extension icon and export your cookies as a standard Netscape `cookies.txt` file.
+4. In the **Render Dashboard**:
+   - Go to your FetchBird service &rarr; **Environment** tab.
+   - Scroll down to **Secret Files**.
+   - Click **Add Secret File**.
+   - **Filename**: `/etc/secrets/cookies.txt`
+   - **Contents**: Paste the entire contents of your exported `cookies.txt`.
+   - Click **Save Changes**.
+
+FetchBird will automatically discover `/etc/secrets/cookies.txt` and authenticate all yt-dlp requests with YouTube!
+
+#### Method 2: Environment Variable (`YOUTUBE_COOKIES`)
+1. Export your `cookies.txt` as described above.
+2. In Render Dashboard &rarr; **Environment** &rarr; **Environment Variables**:
+   - Add `YOUTUBE_COOKIES` and paste the raw cookie text (or Base64-encode it and paste).
+
+#### Method 3: HTTP/HTTPS or SOCKS5 Proxy
+If you prefer routing requests through a residential or custom proxy, set the `PROXY_URL` environment variable:
+```env
+PROXY_URL=http://user:password@proxy-ip:port
+```
+
+You can verify that your cookies or proxy are loaded at any time by visiting:
+`https://your-service.onrender.com/api/status`
+
+---
+
 ## Scope & Legal Disclaimer
 
 FetchBird is intended for personal media archiving and rights-cleared content (such as videos you have authored, Creative Commons licensed material, or media with authorized distribution permissions). Respect intellectual property rights and YouTube's Terms of Service.
