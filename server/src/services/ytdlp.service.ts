@@ -27,10 +27,20 @@ export async function getYtDlp(): Promise<InstanceType<typeof YTDlpWrap>> {
     return ytDlpInstance;
   }
 
+  // 0. Check system-installed binary in standard locations (/usr/local/bin/yt-dlp)
+  const systemCandidates = ["/usr/local/bin/yt-dlp", "/usr/bin/yt-dlp"];
+  for (const candidate of systemCandidates) {
+    if (fs.existsSync(candidate)) {
+      console.log(`[yt-dlp] Using system binary at ${candidate}`);
+      ytDlpInstance = new YTDlpWrap(candidate);
+      return ytDlpInstance;
+    }
+  }
+
   // 1. Check if yt-dlp is in PATH
   let inPath = false;
   try {
-    const cmd = process.platform === "win32" ? "where yt-dlp" : "which yt-dlp";
+    const cmd = process.platform === "win32" ? "where yt-dlp" : "command -v yt-dlp || which yt-dlp";
     execSync(cmd, { stdio: "ignore" });
     inPath = true;
   } catch {
@@ -274,10 +284,17 @@ export function getServiceDiagnostics() {
     process.env.HTTPS_PROXY ||
     process.env.HTTP_PROXY;
   return {
+    version: "1.3.0",
+    nodeVersion: process.version,
     cookiesConfigured: Boolean(cookieInfo.path),
     cookiesSource: cookieInfo.source,
     proxyConfigured: Boolean(proxyUrl),
-    binaryPath: LOCAL_BIN_PATH,
+    binaryPath: ytDlpInstance
+      ? ytDlpInstance.getBinaryPath()
+      : fs.existsSync("/usr/local/bin/yt-dlp")
+      ? "/usr/local/bin/yt-dlp"
+      : LOCAL_BIN_PATH,
+    jsRuntimes: ["deno", "node"],
   };
 }
 

@@ -27,13 +27,14 @@ RUN npm run build
 # ==========================================
 FROM node:22-bookworm-slim AS runner
 
-# Install FFmpeg, Python3, curl, unzip, ca-certificates for yt-dlp & media muxing
+# Install FFmpeg, Python3, curl, unzip, ca-certificates, debianutils for yt-dlp & media muxing
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     python3 \
     curl \
     unzip \
     ca-certificates \
+    debianutils \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Deno (official recommended JS challenge solver for yt-dlp)
@@ -42,6 +43,8 @@ RUN curl -fsSL https://deno.land/install.sh | DENO_INSTALL=/usr/local sh
 # Install latest yt-dlp binary system-wide
 RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
     && chmod a+rx /usr/local/bin/yt-dlp
+
+ENV PATH="/usr/local/bin:${PATH}"
 
 WORKDIR /app
 
