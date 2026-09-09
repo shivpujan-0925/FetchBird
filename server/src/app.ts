@@ -7,7 +7,7 @@ import infoRouter from "./routes/info.js";
 import downloadRouter from "./routes/download.js";
 import fileRouter from "./routes/file.js";
 import batchRouter from "./routes/batch.js";
-import { getServiceDiagnostics } from "./services/ytdlp.service.js";
+import { getServiceDiagnostics, runRawFormats } from "./services/ytdlp.service.js";
 
 const app = express();
 
@@ -55,6 +55,16 @@ app.get("/api/status", (_req, res) => {
     service: "FetchBird Server",
     diagnostics: getServiceDiagnostics(),
   });
+});
+
+app.get("/api/raw-formats", async (req, res) => {
+  try {
+    const url = (req.query.url as string) || "https://www.youtube.com/watch?v=E4ZJxhyAaH8";
+    const result = await runRawFormats(url);
+    res.type("text/plain").send(`Command: ${result.command}\n\nSTDOUT:\n${result.stdout}\n\nSTDERR:\n${result.stderr}`);
+  } catch (err: any) {
+    res.status(500).type("text/plain").send(`Error: ${err.message}`);
+  }
 });
 
 // Production Static Client Serving (SPA)

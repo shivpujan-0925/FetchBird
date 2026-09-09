@@ -221,8 +221,8 @@ export function getCommonYtDlpArgs(): string[] {
     extraArgs.push("--extractor-args", extractorArgs);
   }
 
-  // 4. JS runtimes (Deno & Node) for signature deciphering and unlocking full video formats
-  extraArgs.push("--js-runtimes", "deno", "--js-runtimes", "node");
+  // 4. JS runtimes (Node.js primary, Deno fallback) for signature deciphering and unlocking full video formats
+  extraArgs.push("--js-runtimes", "node", "--js-runtimes", "deno");
 
   return extraArgs;
 }
@@ -624,4 +624,27 @@ export async function downloadToFile(
       resolve(finalPath);
     });
   });
+}
+
+/**
+ * Runs raw yt-dlp -F with all configured runtime arguments (cookies, node/deno JS runtimes, proxy)
+ * and returns the exact command and unfiltered stdout/stderr.
+ */
+export async function runRawFormats(url: string): Promise<{ command: string; stdout: string; stderr: string }> {
+  const yt = await getYtDlp();
+  const commonArgs = getCommonYtDlpArgs();
+  const args = ["-F", url, ...commonArgs];
+  const binary = yt.getBinaryPath ? yt.getBinaryPath() : "yt-dlp";
+  const fullCommand = `${binary} ${args.map((a) => (a.includes(" ") ? `"${a}"` : a)).join(" ")}`;
+
+  try {
+    const stdout = await yt.execPromise(args);
+    return { command: fullCommand, stdout, stderr: "" };
+  } catch (err: any) {
+    return {
+      command: fullCommand,
+      stdout: err.stdout || "",
+      stderr: err.stderr || err.message || "",
+    };
+  }
 }
