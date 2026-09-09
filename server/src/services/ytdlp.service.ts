@@ -81,13 +81,47 @@ let cachedCookiesPath: string | null = null;
 let cachedCookieSource: CookieResolution["source"] = "none";
 
 /**
+ * Ensures cookies from read-only mounts (e.g. /etc/secrets on Render)
+ * are copied to a writable location in TEMP_DIR so yt-dlp can save rotated cookies without error.
+ */
+function ensureWritableCookiesFile(sourcePath: string): string {
+  try {
+    const tempDir = path.resolve(process.env.TEMP_DIR || "./tmp");
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    const runtimeCookiePath = path.join(tempDir, "cookies_runtime.txt");
+
+    const sourceStat = fs.statSync(sourcePath);
+    let shouldCopy = true;
+    if (fs.existsSync(runtimeCookiePath)) {
+      const runtimeStat = fs.statSync(runtimeCookiePath);
+      if (runtimeStat.mtimeMs >= sourceStat.mtimeMs && runtimeStat.size > 0) {
+        shouldCopy = false;
+      }
+    }
+
+    if (shouldCopy) {
+      const content = fs.readFileSync(sourcePath, "utf-8");
+      fs.writeFileSync(runtimeCookiePath, content, { encoding: "utf-8", mode: 0o600 });
+      console.log(`[yt-dlp] Prepared writable cookies copy at ${runtimeCookiePath}`);
+    }
+
+    return runtimeCookiePath;
+  } catch (err) {
+    console.error("[yt-dlp] Failed to prepare writable cookies file:", err);
+    return sourcePath;
+  }
+}
+
+/**
  * Resolves YouTube cookies location from Render secret files, environment variables, or local files.
  */
 export function resolveCookies(): CookieResolution {
   // 1. Explicit path from env
   const envPath = process.env.COOKIES_PATH || process.env.YOUTUBE_COOKIES_PATH;
   if (envPath && fs.existsSync(envPath)) {
-    cachedCookiesPath = path.resolve(envPath);
+    cachedCookiesPath = ensureWritableCookiesFile(path.resolve(envPath));
     cachedCookieSource = "env-path";
     return { path: cachedCookiesPath, source: cachedCookieSource };
   }
@@ -95,7 +129,7 @@ export function resolveCookies(): CookieResolution {
   // 2. Render secret file standard mount point (/etc/secrets/cookies.txt)
   const renderSecretPath = "/etc/secrets/cookies.txt";
   if (fs.existsSync(renderSecretPath)) {
-    cachedCookiesPath = renderSecretPath;
+    cachedCookiesPath = ensureWritableCookiesFile(renderSecretPath);
     cachedCookieSource = "render-secret";
     return { path: cachedCookiesPath, source: cachedCookieSource };
   }
@@ -108,7 +142,7 @@ export function resolveCookies(): CookieResolution {
   ];
   for (const candidate of localCandidates) {
     if (fs.existsSync(candidate)) {
-      cachedCookiesPath = candidate;
+      cachedCookiesPath = ensureWritableCookiesFile(candidate);
       cachedCookieSource = "local-file";
       return { path: cachedCookiesPath, source: cachedCookieSource };
     }
